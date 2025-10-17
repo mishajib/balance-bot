@@ -1,0 +1,81 @@
+name: Deploy website on push in production server
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 🔹 Telegram Notification: Deployment Started
+      - name: Telegram notification - Deployment started
+        run: |
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
+          -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+          -d parse_mode=Markdown \
+          -d text="🚀 *Deployment Started*%0A\
+          *Repository:* ${{ github.repository }}%0A\
+          *Branch:* ${{ github.ref_name }}%0A\
+          *Commit:* ${{ github.sha }}%0A\
+          *Author:* ${{ github.actor }}%0A\
+          *Message:* ${{ github.event.head_commit.message }}"
+
+      # 🔹 Deploy via SSH
+      - name: Executing remote ssh commands using password
+        id: deploy
+        uses: appleboy/ssh-action@master
+        with:
+          debug: false
+          host: ${{ secrets.C_HOST }}
+          username: ${{ secrets.C_USERNAME }}
+          password: ${{ secrets.C_PASSWORD }}
+          script: |
+            cd public_html/balancebot.mi-shajib.com/
+            echo "Make application down for maintenance"
+            php artisan down
+            echo "Pulling latest changes from repository"
+            git pull origin master
+            echo "Installing composer dependencies"
+            composer install --no-interaction --prefer-dist --optimize-autoloader
+            echo "Migrating database"
+            php artisan migrate --force
+            echo "Running artisan optimize"
+            php artisan optimize:clear
+            echo "Making application up"
+            php artisan up
+
+      # 🔹 Telegram Notification: Deployment Successful
+      - name: Telegram notification - Deployment successful
+        if: success()
+        run: |
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
+          -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+          -d parse_mode=Markdown \
+          -d text="✅ *Deployment Successful!*%0A\
+          *Repository:* ${{ github.repository }}%0A\
+          *Branch:* ${{ github.ref_name }}%0A\
+          *Commit:* ${{ github.sha }}%0A\
+          *Author:* ${{ github.actor }}%0A\
+          *Time:* ${{ github.event.head_commit.timestamp }}%0A\
+          🎉 Website is now live!"
+
+      # 🔹 Telegram Notification: Deployment Failed
+      - name: Telegram notification - Deployment failed
+        if: failure()
+        run: |
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
+          -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+          -d parse_mode=Markdown \
+          -d text="❌ *Deployment Failed!*%0A\
+          *Repository:* ${{ github.repository }}%0A\
+          *Branch:* ${{ github.ref_name }}%0A\
+          *Commit:* ${{ github.sha }}%0A\
+          *Author:* ${{ github.actor }}%0A\
+          🔧 Please check the GitHub Actions logs for more details."
