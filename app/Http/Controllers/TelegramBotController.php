@@ -12,7 +12,7 @@ class TelegramBotController extends Controller
     {
         $update = Telegram::commandsHandler(true);
 
-        // Handle non-command messages
+        // Handle non-command messages - rerun
         if ($update->getMessage()) {
             $message = $update->getMessage();
             $text = $message->getText();
