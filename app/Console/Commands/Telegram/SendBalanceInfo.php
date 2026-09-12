@@ -13,7 +13,7 @@ class SendBalanceInfo extends Command
 {
     protected $signature = 'telegram:send-balance-info
                             {--accountNo= : The DESCO account number}
-                            {--type=godown : Type of balance info (home/godown)}';
+                            {--type= : Type of balance info (home/godown, default: home)}';
 
     protected $description = 'Send DESCO balance information via Telegram bot';
 
@@ -22,19 +22,25 @@ class SendBalanceInfo extends Command
      */
     public function handle(): void
     {
-        $accountNo = $this->option('accountNo');
-        $type = strtolower($this->option('type') ?? 'home'); // ✅ Default type is home
-
-        if (! $accountNo) {
-            $this->error('❌ Account number is required. Example: php artisan telegram:send-balance-info --accountNo=123456789 --type=home');
-            Log::error('Account number is missing for Telegram balance info command.');
-
-            return;
-        }
+        $type = strtolower($this->option('type') ?: 'home');
 
         if (! in_array($type, ['home', 'godown'])) {
             $this->error('❌ Invalid type. Allowed values: home, godown');
             Log::error('Invalid type provided for Telegram balance info command.', ['type' => $type]);
+
+            return;
+        }
+
+        $accountNo = $this->option('accountNo');
+        if (! $accountNo) {
+            $accountNo = $type === 'godown'
+                ? config('services.desco.godown_account_no')
+                : config('services.desco.home_account_no');
+        }
+
+        if (! $accountNo) {
+            $this->error("❌ Account number is not configured for type '{$type}'. Please provide --accountNo or set it in config.");
+            Log::error("Account number is missing for Telegram balance info command for type: {$type}.");
 
             return;
         }
@@ -80,15 +86,21 @@ class SendBalanceInfo extends Command
     {
         $balance = (float) ($d['balance'] ?? 0);
         $emoji = $balance > 0 ? '💚' : '❤️';
+        $accountNo = $d['accountNo'] ?? 'N/A';
+        $customerName = $d['customerName'] ?? 'N/A';
+        $contactNo = $d['contactNo'] ?? 'N/A';
+        $meterNo = $d['meterNo'] ?? 'N/A';
+        $sanctionLoad = $d['sanctionLoad'] ?? 'N/A';
+        $readingTime = $d['readingTime'] ?? now()->format('Y-m-d H:i:s');
 
         $text = "🏠 <b>Home Balance</b>\n━━━━━━━━━━━━━━━━━━━━\n\n".
-            "🔢 <b>Account:</b> <code>{$d['accountNo']}</code>\n".
-            "👤 <b>Name:</b> {$d['customerName']}\n".
-            "📞 <b>Contact:</b> {$d['contactNo']}\n".
+            "🔢 <b>Account:</b> <code>{$accountNo}</code>\n".
+            "👤 <b>Name:</b> {$customerName}\n".
+            "📞 <b>Contact:</b> {$contactNo}\n".
             "{$emoji} <b>Balance:</b> ৳ ".number_format($balance, 2)."\n".
-            "⚡ <b>Meter:</b> <code>{$d['meterNo']}</code>\n".
-            "🔌 <b>Load:</b> {$d['sanctionLoad']} kW\n".
-            "📅 <b>Reading:</b> {$d['readingTime']}\n\n";
+            "⚡ <b>Meter:</b> <code>{$meterNo}</code>\n".
+            "🔌 <b>Load:</b> {$sanctionLoad} kW\n".
+            "📅 <b>Reading:</b> {$readingTime}\n\n";
 
         if ($balance < config('services.desco.low_balance_threshold')) {
             $text .= "⚠️ <b>Low Balance Alert!</b>\nPlease recharge soon to avoid disconnection.\n\n";
@@ -104,15 +116,21 @@ class SendBalanceInfo extends Command
     {
         $balance = (float) ($d['balance'] ?? 0);
         $emoji = $balance > 0 ? '💙' : '🖤';
+        $accountNo = $d['accountNo'] ?? 'N/A';
+        $customerName = $d['customerName'] ?? 'N/A';
+        $contactNo = $d['contactNo'] ?? 'N/A';
+        $meterNo = $d['meterNo'] ?? 'N/A';
+        $sanctionLoad = $d['sanctionLoad'] ?? 'N/A';
+        $readingTime = $d['readingTime'] ?? now()->format('Y-m-d H:i:s');
 
         $text = "🏢 <b>Godown Balance</b>\n━━━━━━━━━━━━━━━━━━━━\n\n".
-            "🔢 <b>Account:</b> <code>{$d['accountNo']}</code>\n".
-            "🏗️ <b>Name:</b> {$d['customerName']}\n".
-            "📞 <b>Contact:</b> {$d['contactNo']}\n".
+            "🔢 <b>Account:</b> <code>{$accountNo}</code>\n".
+            "🏗️ <b>Name:</b> {$customerName}\n".
+            "📞 <b>Contact:</b> {$contactNo}\n".
             "{$emoji} <b>Balance:</b> ৳ ".number_format($balance, 2)."\n".
-            "⚡ <b>Meter:</b> <code>{$d['meterNo']}</code>\n".
-            "🏭 <b>Load:</b> {$d['sanctionLoad']} kW\n".
-            "📅 <b>Reading:</b> {$d['readingTime']}\n\n";
+            "⚡ <b>Meter:</b> <code>{$meterNo}</code>\n".
+            "🏭 <b>Load:</b> {$sanctionLoad} kW\n".
+            "📅 <b>Reading:</b> {$readingTime}\n\n";
 
         if ($balance < config('services.desco.low_balance_threshold')) {
             $text .= "⚠️ <b>Low Balance Alert!</b>\nPlease recharge the godown meter soon.\n\n";

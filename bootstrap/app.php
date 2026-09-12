@@ -21,13 +21,11 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withSchedule(function (Schedule $schedule) {
         $schedule->command('telegram:send-balance-info', [
-            '--accountNo' => config('services.desco.home_account_no'),
             '--type' => 'home',
         ])->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/scheduler.log'));
 
         $schedule->command('telegram:send-balance-info', [
-            '--accountNo' => config('services.desco.godown_account_no'),
             '--type' => 'godown',
         ])->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/scheduler.log'));

@@ -17,7 +17,17 @@ class GodownBalance extends Command
         $this->replyWithChatAction(['action' => Actions::TYPING]);
 
         try {
-            $data = app(DescoService::class)->getBalance(config('services.desco.godown_account_no'));
+            $accountNo = config('services.desco.godown_account_no');
+
+            if (! $accountNo) {
+                $this->replyWithMessage([
+                    'text' => 'Godown account number is not configured.',
+                ]);
+
+                return;
+            }
+
+            $data = app(DescoService::class)->getBalance($accountNo);
 
             if (! $data) {
                 $this->replyWithMessage([
@@ -41,17 +51,23 @@ class GodownBalance extends Command
 
     private function format(array $d): string
     {
-        $balance = $d['balance'] ?? 0;
+        $balance = (float) ($d['balance'] ?? 0);
         $emoji = $balance > 0 ? '💚' : '❤️';
+        $accountNo = $d['accountNo'] ?? 'N/A';
+        $customerName = $d['customerName'] ?? 'N/A';
+        $contactNo = $d['contactNo'] ?? 'N/A';
+        $meterNo = $d['meterNo'] ?? 'N/A';
+        $sanctionLoad = $d['sanctionLoad'] ?? 'N/A';
+        $readingTime = $d['readingTime'] ?? now()->format('Y-m-d H:i:s');
 
         $text = "🏭 <b>Godown Balance</b>\n━━━━━━━━━━━━━━━━━━━━\n\n".
-            "🔢 <b>Account:</b> <code>{$d['accountNo']}</code>\n".
-            "👤 <b>Name:</b> {$d['customerName']}\n".
-            "📞 <b>Contact:</b> {$d['contactNo']}\n".
+            "🔢 <b>Account:</b> <code>{$accountNo}</code>\n".
+            "👤 <b>Name:</b> {$customerName}\n".
+            "📞 <b>Contact:</b> {$contactNo}\n".
             "{$emoji} <b>Balance:</b> ৳ ".number_format($balance, 2)."\n".
-            "⚡ <b>Meter:</b> <code>{$d['meterNo']}</code>\n".
-            "🔌 <b>Load:</b> {$d['sanctionLoad']} kW\n".
-            "📅 <b>Reading:</b> {$d['readingTime']}\n\n";
+            "⚡ <b>Meter:</b> <code>{$meterNo}</code>\n".
+            "🔌 <b>Load:</b> {$sanctionLoad} kW\n".
+            "📅 <b>Reading:</b> {$readingTime}\n\n";
 
         // Add warning if balance is low
         if ($balance < config('services.desco.low_balance_threshold')) {

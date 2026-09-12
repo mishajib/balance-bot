@@ -37,6 +37,10 @@ return [
 
     'desco' => [
         'base_url' => env('DESCO_BASE_URL', 'https://prepaid.desco.org.bd/api/unified/customer'),
+        'base_urls' => [
+            'unified' => env('DESCO_UNIFIED_BASE_URL', 'https://prepaid.desco.org.bd/api/unified/customer'),
+            'tkdes' => env('DESCO_TKDES_BASE_URL', 'https://prepaid.desco.org.bd/api/tkdes/customer'),
+        ],
         'home_account_no' => env('DESCO_HOME_ACCOUNT_NO', ''),
         'godown_account_no' => env('DESCO_GODOWN_ACCOUNT_NO', ''),
         'low_balance_threshold' => env('DESCO_LOW_BALANCE_THRESHOLD', 100.00),
